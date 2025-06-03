@@ -1,36 +1,43 @@
 import streamlit as st
-
-# from io import BytesIO
+from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
-
 from google.oauth2 import service_account
-from googleapiclient import build
-from googleapiclient.http import MediaIoBaseDownload
-
-import os
+from googleapiclient.discovery import build
 
 creds = service_account.Credentials.from_service_account_info(
     st.secrets["labelling_ui_credentials"],
     scopes=["https://www.googleapis.com/auth/drive.readonly"],
 )
-IMAGE_FOLDER = "images"
 ANNOTATION_FILE = "annotations.txt"
-example_data = {
-    "image1.jpg": [((50, 30, 150, 120), 1), ((160, 60, 250, 140), 2)],
-    "image2.jpg": [((20, 20, 100, 100), 3)],
-    "image3.jpg": [((20, 20, 100, 100), 4)],
-}
 FONT = ImageFont.load_default(size=18)
 
 drive_service = build("drive", "v3", credentials=creds)
 
 
+def test_connection(service):
+    try:
+        about = service.about().get(fields="user, storageQuota").execute()
+        user_email = about["user"]["emailAddress"]
+        st.success(f"✅ Connected to Google Drive as: {user_email}")
+        return True
+    except Exception as e:
+        st.error(f"❌ Failed to connect to Google Drive:\n{e}")
+        return False
+
+
+test_connection(drive_service)
+
+
 def find_folder_id(service, path):
-    parts = path.strip("/").split("/")
-    parent = "root"
+    parts = path.split("/")
+    parent = None
 
     for part in parts:
-        query = f"'{parent}' in parents and mimeType = 'application/vnd.google-apps.folder' and name = '{part}' and trashed = false"
+        print(f"PART: {part} in {parent}")
+        if parent is None:
+            query = "mimeType = 'application/vnd.google-apps.folder' and sharedWithMe and trashed = false"
+        else:
+            query = f"mimeType = 'application/vnd.google-apps.folder' and '{parent}' in parents and name = '{part}' and trashed = false"
         response = service.files().list(q=query, fields="files(id, name)").execute()
         files = response.get("files", [])
 
@@ -43,15 +50,27 @@ def find_folder_id(service, path):
     return parent
 
 
-def list_images_in_folder(folder_id):
-    query = f"'{folder_id}' in parents and mimeType contains 'image/'"
-    results = drive_service.files().list(q=query, fields="files(id, name)").execute()
+def list_images_in_folder(service, folder_id):
+    query = f"'{folder_id}' in parents"
+    results = service.files().list(q=query, fields="files(id, name)").execute()
     return results.get("files", [])
 
 
+def get_image_from_drive(service, file_id):
+    try:
+        request = service.files().get_media(fileId=file_id)
+        file_content = request.execute()
+
+        image = Image.open(BytesIO(file_content))
+        return image
+
+    except Exception as e:
+        st.error(f"Error downloading image: {str(e)}")
+        return None
+
+
 folder_id = find_folder_id(drive_service, "CS610/Project/Images")
-image_files = list_images_in_folder(folder_id)
-image_files.sort()
+image_files = list_images_in_folder(drive_service, folder_id)
 
 if "image_index" not in st.session_state:
     st.session_state.image_index = 0
@@ -78,26 +97,27 @@ def prev_image():
 # Layout
 st.title("Bounding Box Annotation Tool")
 
-current_image_name = image_files[st.session_state.image_index]
-image = Image.open(f"images/{current_image_name}").convert("RGB")
+current_image_id = image_files[st.session_state.image_index]["id"]
+current_image_name = image_files[st.session_state.image_index]["name"]
+image = get_image_from_drive(drive_service, current_image_id)
 
-draw = ImageDraw.Draw(image)
-for box, id in example_data[current_image_name]:
-    draw.rectangle(box, outline="red", width=2)
-    draw.text((box[2] - 2, box[3] - 2), str(id), fill="red", font=FONT)
+# draw = ImageDraw.Draw(image)
+# for box, id in example_data[current_image_name]:
+#     draw.rectangle(box, outline="red", width=2)
+#     draw.text((box[2] - 2, box[3] - 2), str(id), fill="red", font=FONT)
 
 st.image(image, caption=current_image_name, use_container_width=True)
 
-st.subheader("Assign labels to the bounding boxes")
-new_labels = []
-for i, (box, num_label) in enumerate(example_data[current_image_name]):
-    label = st.text_input(f"Label for box {i + 1}", key=f"box_{i}")
-    if label:
-        new_labels.append((box, label))
-
-if st.button("Save Annotations", use_container_width=True):
-    save_annotation(current_image_name, new_labels)
-    st.success("Annotations saved!")
+# st.subheader("Assign labels to the bounding boxes")
+# new_labels = []
+# for i, (box, num_label) in enumerate(example_data[current_image_name]):
+#     label = st.text_input(f"Label for box {i + 1}", key=f"box_{i}")
+#     if label:
+#         new_labels.append((box, label))
+#
+# if st.button("Save Annotations", use_container_width=True):
+#     save_annotation(current_image_name, new_labels)
+#     st.success("Annotations saved!")
 
 col1, col2 = st.columns(2)
 with col1:
