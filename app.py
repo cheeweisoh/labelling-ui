@@ -3,14 +3,16 @@ import streamlit as st
 # from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
 
-# from google.auth.transport.requests import Request
-# from google.oauth2.credentials import Credentials
-# from google_auth_oauthlib import InstalledAppFlow
-# from googleapiclient import build
-# from googleapiclient.errors import HttpError
+from google.oauth2 import service_account
+from googleapiclient import build
+from googleapiclient.http import MediaIoBaseDownload
+
 import os
 
-# SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
+creds = service_account.Credentials.from_service_account_info(
+    st.secrets["labelling_ui_credentials"],
+    scopes=["https://www.googleapis.com/auth/drive.readonly"],
+)
 IMAGE_FOLDER = "images"
 ANNOTATION_FILE = "annotations.txt"
 example_data = {
@@ -20,43 +22,35 @@ example_data = {
 }
 FONT = ImageFont.load_default(size=18)
 
-
-# def get_drive_service():
-#     creds = None
-#
-#     if os.path.exists("token.json"):
-#         creds = Credentials.from_authorized_user_file("token.json", SCOPES)
-#     if not creds or not creds.valid:
-#         if creds and creds.expired and creds.refresh_token:
-#             creds.refresh(Request())
-#         else:
-#             flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
-#             creds = flow.run_local_server(port=0)
-#         with open("token.json", "w") as token:
-#             token.write(creds.to_json())
-#
-#     try:
-#         service = build("drive", "v3", credentials=creds)
-#         return service
-#     except HttpError as error:
-#         print(f"An error occurred: {error}")
-#
-#
-# def get_image_from_drive(service, file_id):
-#     request = service.files().get_media(fileId=file_id)
-#     fh = BytesIO()
-#     downloader = MediaIoBaseDownload(fh, request)
-#     done = False
-#
-#     while not done:
-#         status, done = downloader.next_chunk()
-#     fh.seek(0)
-#     return Image.open(fh)
+drive_service = build("drive", "v3", credentials=creds)
 
 
-image_files = [
-    f for f in os.listdir(IMAGE_FOLDER) if f.lower().endswith((".png", ".jpg", ",jpeg"))
-]
+def find_folder_id(service, path):
+    parts = path.strip("/").split("/")
+    parent = "root"
+
+    for part in parts:
+        query = f"'{parent}' in parents and mimeType = 'application/vnd.google-apps.folder' and name = '{part}' and trashed = false"
+        response = service.files().list(q=query, fields="files(id, name)").execute()
+        files = response.get("files", [])
+
+        if not files:
+            raise FileNotFoundError(
+                f" Folder '{part}' not found under parent ID '{parent}'"
+            )
+        parent = files[0]["id"]
+
+    return parent
+
+
+def list_images_in_folder(folder_id):
+    query = f"'{folder_id}' in parents and mimeType contains 'image/'"
+    results = drive_service.files().list(q=query, fields="files(id, name)").execute()
+    return results.get("files", [])
+
+
+folder_id = find_folder_id(drive_service, "CS610/Project/Images")
+image_files = list_images_in_folder(folder_id)
 image_files.sort()
 
 if "image_index" not in st.session_state:
