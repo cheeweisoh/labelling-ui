@@ -62,5 +62,5 @@ with col1:
 
 with col2:
     if st.button("Next", use_container_width=True):
-        next_image()
+        next_image(image_files)
         st.rerun()
