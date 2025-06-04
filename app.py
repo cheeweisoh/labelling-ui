@@ -12,6 +12,7 @@ from gdrive_utils import (
 from st_utils import next_image, prev_image
 from fd_utils import load_model, get_bounding_boxes
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 creds = service_account.Credentials.from_service_account_info(
     st.secrets["labelling_ui_credentials"],
@@ -56,7 +57,15 @@ for idx, x1, y1, x2, y2 in bbox_list:
     label = st.text_input(f"Label for box {idx}", key=f"box_{idx}")
     if label:
         new_labels.append(
-            [idx, x1, y1, x2, y2, label, datetime.now().strftime("%Y-%m-%d %H:%M:%S")]
+            [
+                idx,
+                x1,
+                y1,
+                x2,
+                y2,
+                label,
+                datetime.now(ZoneInfo("Asia/Singapore")).strftime("%Y-%m-%d %H:%M:%S"),
+            ]
         )
 
 if st.button("Save Annotations", use_container_width=True):
