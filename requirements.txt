@@ -7,4 +7,3 @@ insightface
 opencv-python
 onnxruntime
 numpy
-libgl1
