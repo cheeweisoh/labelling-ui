@@ -1,7 +1,6 @@
 import streamlit as st
 from insightface.app import FaceAnalysis
 import cv2
-from collections import defaultdict
 import numpy as np
 
 
@@ -24,7 +23,7 @@ def get_bounding_boxes(img, img_path, face_app):
 
     vis_img = rgb_img2.copy()
     h, w = vis_img.shape[:2]
-    bbox_list = defaultdict(list)
+    bbox_list = []
 
     for idx, face in enumerate(faces):
         box = face.bbox.astype(int)
@@ -65,7 +64,7 @@ def get_bounding_boxes(img, img_path, face_app):
             cv2.LINE_AA,
         )
 
-        bbox_list[img_path].append([idx, x1, y1, x2, y2])
+        bbox_list.append([idx, x1, y1, x2, y2])
 
     vis_img = cv2.cvtColor(vis_img, cv2.COLOR_RGB2BGR)
     return vis_img, bbox_list

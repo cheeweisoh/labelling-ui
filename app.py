@@ -43,16 +43,16 @@ vis_img, bbox_list = get_bounding_boxes(image, current_image_name, face_app)
 
 st.image(vis_img, caption=current_image_name, use_container_width=True)
 
-# st.subheader("Assign labels to the bounding boxes")
-# new_labels = []
-# for i, (box, num_label) in enumerate(example_data[current_image_name]):
-#     label = st.text_input(f"Label for box {i + 1}", key=f"box_{i}")
-#     if label:
-#         new_labels.append((box, label))
-#
-# if st.button("Save Annotations", use_container_width=True):
-#     save_annotation(current_image_name, new_labels)
-#     st.success("Annotations saved!")
+st.subheader("Assign labels to the bounding boxes")
+new_labels = []
+for idx, x1, y1, x2, y2 in bbox_list:
+    label = st.text_input(f"Label for box {idx}", key=f"box_{idx}")
+    if label:
+        new_labels.append(((x1, y1, x2, y2), label))
+
+if st.button("Save Annotations", use_container_width=True):
+    save_annotation(current_image_name, new_labels)
+    st.success("Annotations saved!")
 
 col1, col2 = st.columns(2)
 with col1:
