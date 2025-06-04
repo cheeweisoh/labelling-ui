@@ -1,6 +1,8 @@
 import streamlit as st
-from io import BytesIO
+from io import BytesIO, StringIO
+from googleapiclient.http import MediaIoBaseUpload
 from PIL import Image
+import numpy as np
 
 
 def test_connection(service):
@@ -52,3 +54,9 @@ def get_image_from_drive(service, file_id):
     except Exception as e:
         st.error(f"Error downloading image: {str(e)}")
         return None
+
+
+def write_label_to_sheet(worksheet, data):
+    for row in data:
+        row = [int(x) if isinstance(x, (np.integer,)) else x for x in row]
+        worksheet.append_row(row)
