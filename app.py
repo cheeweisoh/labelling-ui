@@ -1,9 +1,10 @@
 import streamlit as st
-from PIL import ImageDraw, ImageFont
+from PIL import ImageFont
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from gdrive_utils import find_folder_id, list_images_in_folder, get_image_from_drive
 from st_utils import next_image, prev_image
+from fd_utils import load_model, get_bounding_boxes
 
 creds = service_account.Credentials.from_service_account_info(
     st.secrets["labelling_ui_credentials"],
@@ -16,6 +17,8 @@ drive_service = build("drive", "v3", credentials=creds)
 
 folder_id = find_folder_id(drive_service, "CS610/Project/Images")
 image_files = list_images_in_folder(drive_service, folder_id)
+
+face_app = load_model()
 
 if "image_index" not in st.session_state:
     st.session_state.image_index = 0
@@ -36,12 +39,9 @@ current_image_id = image_files[st.session_state.image_index]["id"]
 current_image_name = image_files[st.session_state.image_index]["name"]
 image = get_image_from_drive(drive_service, current_image_id)
 
-# draw = ImageDraw.Draw(image)
-# for box, id in example_data[current_image_name]:
-#     draw.rectangle(box, outline="red", width=2)
-#     draw.text((box[2] - 2, box[3] - 2), str(id), fill="red", font=FONT)
+vis_img, bbox_list = get_bounding_boxes(image, current_image_name, face_app)
 
-st.image(image, caption=current_image_name, use_container_width=True)
+st.image(vis_img, caption=current_image_name, use_container_width=True)
 
 # st.subheader("Assign labels to the bounding boxes")
 # new_labels = []
