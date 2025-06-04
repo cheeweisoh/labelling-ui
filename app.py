@@ -12,6 +12,7 @@ from st_utils import next_image, prev_image
 from fd_utils import load_model, get_bounding_boxes
 from datetime import datetime
 from zoneinfo import ZoneInfo
+import random
 
 
 creds = service_account.Credentials.from_service_account_info(
@@ -32,19 +33,15 @@ image_files = list_images_in_folder(drive_service, image_folder_id)
 output = sheet_client.open_by_key(st.secrets["output_sheet"]["output_sheet_id"]).sheet1
 labelled_images = [x[0] for x in output.get_all_values()[1:]]
 remaining_images = [x for x in image_files if x["name"] not in labelled_images]
+random.shuffle(remaining_images)
 
 face_app = load_model()
 
 st.title("Bounding Box Annotation Tool")
 
 if remaining_images:
-    if "image_index" not in st.session_state:
-        st.session_state.image_index = 0
-    if "annotations" not in st.session_state:
-        st.session_state.annotations = []
-
-    current_image_id = remaining_images[st.session_state.image_index]["id"]
-    current_image_name = remaining_images[st.session_state.image_index]["name"]
+    current_image_id = remaining_images[0]["id"]
+    current_image_name = remaining_images[0]["name"]
     image = get_image_from_drive(drive_service, current_image_id)
 
     vis_img, bbox_list = get_bounding_boxes(image, current_image_name, face_app)
@@ -75,15 +72,8 @@ if remaining_images:
         write_label_to_sheet(output, new_labels)
         st.success("Annotations saved!")
 
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Previous", use_container_width=True):
-            prev_image()
-            st.rerun()
-
-    with col2:
         if st.button("Next", use_container_width=True):
-            next_image(remaining_images)
+            remaining_images = remaining_images[1:]
             st.rerun()
 
 else:
