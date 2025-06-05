@@ -26,8 +26,7 @@ if "remaining_images" not in st.session_state:
     drive_service = build("drive", "v3", credentials=creds)
     sheet_client = gspread.authorize(creds)
 
-    folder_id = find_folder_id(drive_service, "CS610/Project")
-    image_folder_id = find_folder_id(drive_service, "CS610/Project/Images")
+    image_folder_id = find_folder_id(drive_service, "CS610_AML")
     image_files = list_images_in_folder(drive_service, image_folder_id)
 
     output = sheet_client.open_by_key(
@@ -44,24 +43,31 @@ if "remaining_images" not in st.session_state:
     st.session_state.output = output
 
 st.title("Bounding Box Annotation Tool")
-print(st.session_state.remaining_images)
 
 if st.session_state.image_index < len(st.session_state.remaining_images):
     current_image = st.session_state.remaining_images[st.session_state.image_index]
     current_image_id = current_image["id"]
     current_image_name = current_image["name"]
     image = get_image_from_drive(st.session_state.drive_service, current_image_id)
+    print(f"using image {current_image_name} with id {st.session_state.image_index}")
 
-    vis_img, bbox_list = get_bounding_boxes(
-        image, current_image_name, st.session_state.face_app
-    )
+    if "bbox_cache" not in st.session_state:
+        st.session_state.bbox_cache = {}
+
+    if current_image_name not in st.session_state.bbox_cache:
+        vis_img, bbox_list = get_bounding_boxes(
+            image, current_image_name, st.session_state.face_app
+        )
+        st.session_state.bbox_cache[current_image_name] = (vis_img, bbox_list)
+    else:
+        vis_img, bbox_list = st.session_state.bbox_cache[current_image_name]
 
     st.image(vis_img, caption=current_image_name, use_container_width=True)
 
     st.subheader("Assign labels to the bounding boxes")
     new_labels = []
     for idx, x1, y1, x2, y2 in bbox_list:
-        label = st.text_input(f"Label for box {idx}", key=f"box_{idx}")
+        label = st.text_input(f"Label for box {idx}", key=f"box_{idx}", value=1)
         if label:
             new_labels.append(
                 [
@@ -82,9 +88,9 @@ if st.session_state.image_index < len(st.session_state.remaining_images):
         write_label_to_sheet(st.session_state.output, new_labels)
         st.success("Annotations saved!")
 
-        if st.button("Next", use_container_width=True):
-            st.session_state.image_index += 1
-            st.rerun()
+    if st.button("Next", use_container_width=True):
+        st.session_state.image_index += 1
+        st.rerun()
 
 else:
     st.success("🎉 We're Done! 🎉")

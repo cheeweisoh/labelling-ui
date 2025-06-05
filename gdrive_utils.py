@@ -22,7 +22,7 @@ def find_folder_id(service, path):
 
     for part in parts:
         if parent is None:
-            query = "mimeType = 'application/vnd.google-apps.folder' and sharedWithMe and trashed = false"
+            query = f"mimeType = 'application/vnd.google-apps.folder' and sharedWithMe and name = '{part}' and trashed = false"
         else:
             query = f"mimeType = 'application/vnd.google-apps.folder' and '{parent}' in parents and name = '{part}' and trashed = false"
         response = service.files().list(q=query, fields="files(id, name)").execute()
