@@ -8,7 +8,6 @@ from gdrive_utils import (
     get_image_from_drive,
     write_label_to_sheet,
 )
-from st_utils import next_image, prev_image
 from fd_utils import load_model, get_bounding_boxes
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -23,28 +22,39 @@ creds = service_account.Credentials.from_service_account_info(
     ],
 )
 
-drive_service = build("drive", "v3", credentials=creds)
-sheet_client = gspread.authorize(creds)
+if "remaining_images" not in st.session_state:
+    drive_service = build("drive", "v3", credentials=creds)
+    sheet_client = gspread.authorize(creds)
 
-folder_id = find_folder_id(drive_service, "CS610/Project")
-image_folder_id = find_folder_id(drive_service, "CS610/Project/Images")
-image_files = list_images_in_folder(drive_service, image_folder_id)
+    folder_id = find_folder_id(drive_service, "CS610/Project")
+    image_folder_id = find_folder_id(drive_service, "CS610/Project/Images")
+    image_files = list_images_in_folder(drive_service, image_folder_id)
 
-output = sheet_client.open_by_key(st.secrets["output_sheet"]["output_sheet_id"]).sheet1
-labelled_images = [x[0] for x in output.get_all_values()[1:]]
-remaining_images = [x for x in image_files if x["name"] not in labelled_images]
-random.shuffle(remaining_images)
+    output = sheet_client.open_by_key(
+        st.secrets["output_sheet"]["output_sheet_id"]
+    ).sheet1
+    labelled_images = [x[0] for x in output.get_all_values()[1:]]
+    remaining_images = [x for x in image_files if x["name"] not in labelled_images]
+    random.shuffle(remaining_images)
 
-face_app = load_model()
+    st.session_state.remaining_images = remaining_images
+    st.session_state.image_index = 0
+    st.session_state.drive_service = drive_service
+    st.session_state.face_app = load_model()
+    st.session_state.output = output
 
 st.title("Bounding Box Annotation Tool")
+print(st.session_state.remaining_images)
 
-if remaining_images:
-    current_image_id = remaining_images[0]["id"]
-    current_image_name = remaining_images[0]["name"]
-    image = get_image_from_drive(drive_service, current_image_id)
+if st.session_state.image_index < len(st.session_state.remaining_images):
+    current_image = st.session_state.remaining_images[st.session_state.image_index]
+    current_image_id = current_image["id"]
+    current_image_name = current_image["name"]
+    image = get_image_from_drive(st.session_state.drive_service, current_image_id)
 
-    vis_img, bbox_list = get_bounding_boxes(image, current_image_name, face_app)
+    vis_img, bbox_list = get_bounding_boxes(
+        image, current_image_name, st.session_state.face_app
+    )
 
     st.image(vis_img, caption=current_image_name, use_container_width=True)
 
@@ -69,11 +79,11 @@ if remaining_images:
             )
 
     if st.button("Save Annotations", use_container_width=True):
-        write_label_to_sheet(output, new_labels)
+        write_label_to_sheet(st.session_state.output, new_labels)
         st.success("Annotations saved!")
 
         if st.button("Next", use_container_width=True):
-            remaining_images = remaining_images[1:]
+            st.session_state.image_index += 1
             st.rerun()
 
 else:
