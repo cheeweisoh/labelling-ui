@@ -34,7 +34,7 @@ def main():
         output = sheet_client.open_by_key(
             st.secrets["output_sheet"]["output_sheet_id"]
         ).sheet1
-        labelled_images = [x[0] for x in output.get_all_values()[1:]]
+        labelled_images = set([x[0] for x in output.get_all_values()[1:]])
         remaining_images = [x for x in image_files if x["name"] not in labelled_images]
         random.shuffle(remaining_images)
 

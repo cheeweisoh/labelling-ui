@@ -3,6 +3,8 @@ from io import BytesIO
 from PIL import Image
 import pillow_heif
 import numpy as np
+from googleapiclient.errors import HttpError
+import time
 
 pillow_heif.register_heif_opener()
 
@@ -18,6 +20,20 @@ def test_connection(service):
         return False
 
 
+def retry(request_fn, max_retries=10):
+    for i in range(max_retries):
+        try:
+            return request_fn()
+
+        except HttpError as e:
+            if e.resp.status == 403 and "userRateLimitExceeded" in str(e):
+                time.sleep(2**i)
+            else:
+                raise
+
+    raise RuntimeError("API request failed")
+
+
 def find_folder_id(service, path):
     parts = path.split("/")
     parent = None
@@ -27,7 +43,9 @@ def find_folder_id(service, path):
             query = f"mimeType = 'application/vnd.google-apps.folder' and sharedWithMe and name = '{part}' and trashed = false"
         else:
             query = f"mimeType = 'application/vnd.google-apps.folder' and '{parent}' in parents and name = '{part}' and trashed = false"
-        response = service.files().list(q=query, fields="files(id, name)").execute()
+        response = retry(
+            lambda: service.files().list(q=query, fields="files(id, name)").execute()
+        )
         files = response.get("files", [])
 
         if not files:
@@ -41,15 +59,17 @@ def find_folder_id(service, path):
 
 def list_images_in_folder(service, folder_id):
     query = f"'{folder_id}' in parents"
-    results = (
-        service.files().list(q=query, fields="files(id, name)", pageSize=1000).execute()
+    results = retry(
+        lambda: service.files()
+        .list(q=query, fields="files(id, name)", pageSize=1000)
+        .execute()
     )
     return results.get("files", [])
 
 
 def get_image_from_drive(service, file_id):
     request = service.files().get_media(fileId=file_id)
-    file_content = BytesIO(request.execute())
+    file_content = BytesIO(retry(lambda: request.execute()))
 
     try:
         image = Image.open(file_content)
