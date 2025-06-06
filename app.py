@@ -42,7 +42,10 @@ if "remaining_images" not in st.session_state:
     st.session_state.face_app = load_model()
     st.session_state.output = output
 
-st.title("Bounding Box Annotation Tool")
+st.markdown(
+    "<h1 style='text-align: center;'>Bounding Box Annotation Tool</h1>",
+    unsafe_allow_html=True,
+)
 
 if st.session_state.image_index < len(st.session_state.remaining_images):
     current_image = st.session_state.remaining_images[st.session_state.image_index]
@@ -64,11 +67,13 @@ if st.session_state.image_index < len(st.session_state.remaining_images):
 
     st.image(vis_img, caption=current_image_name, use_container_width=True)
 
-    st.subheader("Assign labels to the bounding boxes")
+    st.subheader("Select the main character")
+    form = st.form("checkboxes", clear_on_submit=True)
     new_labels = []
-    for idx, x1, y1, x2, y2 in bbox_list:
-        label = st.text_input(f"Label for box {idx}", key=f"box_{idx}", value=1)
-        if label:
+    with form:
+        for idx, x1, y1, x2, y2 in bbox_list:
+            checked = st.checkbox(f"Box {idx}", key=f"box_{idx}")
+            label = 0 if checked else 1
             new_labels.append(
                 [
                     current_image_name,
@@ -84,7 +89,18 @@ if st.session_state.image_index < len(st.session_state.remaining_images):
                 ]
             )
 
-    if st.button("Save Annotations", use_container_width=True):
+        submitted_sure = st.form_submit_button("I'm sure", use_container_width=True)
+        submitted_notsure = st.form_submit_button(
+            "I'm not sure", use_container_width=True
+        )
+
+    if submitted_sure:
+        new_labels = [x + ["y"] for x in new_labels]
+        write_label_to_sheet(st.session_state.output, new_labels)
+        st.success("Annotations saved!")
+
+    if submitted_notsure:
+        new_labels = [x + ["n"] for x in new_labels]
         write_label_to_sheet(st.session_state.output, new_labels)
         st.success("Annotations saved!")
 

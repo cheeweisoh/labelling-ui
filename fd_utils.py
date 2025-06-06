@@ -18,7 +18,6 @@ def get_bounding_boxes(img, img_path, face_app):
     print(type(np_img2))
     print(np_img2.dtype)
     print(np_img2.shape)
-    print(np_img2)
     rgb_img2 = cv2.cvtColor(np_img2, cv2.COLOR_BGR2RGB)
     faces = face_app.get(rgb_img2)
 
