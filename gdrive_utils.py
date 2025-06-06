@@ -42,7 +42,7 @@ def find_folder_id(service, path):
 def list_images_in_folder(service, folder_id):
     query = f"'{folder_id}' in parents"
     results = (
-        service.files().list(q=query, fields="files(id, name)", pageSize=2000).execute()
+        service.files().list(q=query, fields="files(id, name)", pageSize=1000).execute()
     )
     return results.get("files", [])
 
