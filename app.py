@@ -101,13 +101,13 @@ def main():
             new_labels = [x + ["y"] for x in new_labels]
             write_label_to_sheet(st.session_state.output, new_labels)
             st.success("Annotations saved!")
+            st.session_state.image_index += 1
+            st.rerun()
 
         if submitted_notsure:
             new_labels = [x + ["n"] for x in new_labels]
             write_label_to_sheet(st.session_state.output, new_labels)
             st.success("Annotations saved!")
-
-        if st.button("Next", use_container_width=True):
             st.session_state.image_index += 1
             st.rerun()
 
