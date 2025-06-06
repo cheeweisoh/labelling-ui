@@ -45,7 +45,7 @@ def get_bounding_boxes(img, img_path, face_app):
 
         label = f"{idx}"
         font = cv2.FONT_HERSHEY_SIMPLEX
-        font_scale = max(0.4, img_width // 1000)
+        font_scale = max(0.4, img_width // 800)
         font_thickness = max(1, img_width // 500)
         font_thickness_scale = max(2, img_width // 300)
 
