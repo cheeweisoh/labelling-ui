@@ -1,8 +1,10 @@
 import streamlit as st
-from io import BytesIO, StringIO
-from googleapiclient.http import MediaIoBaseUpload
+from io import BytesIO
 from PIL import Image
+import pillow_heif
 import numpy as np
+
+pillow_heif.register_heif_opener()
 
 
 def test_connection(service):
@@ -44,11 +46,11 @@ def list_images_in_folder(service, folder_id):
 
 
 def get_image_from_drive(service, file_id):
-    try:
-        request = service.files().get_media(fileId=file_id)
-        file_content = request.execute()
+    request = service.files().get_media(fileId=file_id)
+    file_content = BytesIO(request.execute())
 
-        image = Image.open(BytesIO(file_content))
+    try:
+        image = Image.open(file_content)
         return image
 
     except Exception as e:

@@ -3,6 +3,7 @@ google-api-python-client
 google-auth
 gspread
 pillow
+pillow-heif
 bytesbufio
 insightface
 opencv-python
