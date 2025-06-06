@@ -8,7 +8,7 @@ from gdrive_utils import (
     get_image_from_drive,
     write_label_to_sheet,
 )
-from fd_utils import load_model, get_bounding_boxes
+from fd_utils import load_model, get_bounding_boxes, progress_bar_with_text
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import random
@@ -29,6 +29,7 @@ def main():
 
         image_folder_id = find_folder_id(drive_service, "CS610_AML")
         image_files = list_images_in_folder(drive_service, image_folder_id)
+        print(f"Total images: {len(image_files)}")
 
         output = sheet_client.open_by_key(
             st.secrets["output_sheet"]["output_sheet_id"]
@@ -43,10 +44,19 @@ def main():
         st.session_state.face_app = load_model()
         st.session_state.output = output
 
+        st.session_state.metrics_total_images = len(image_files)
+        st.session_state.metrics_labelled_images = len(labelled_images)
+
     st.markdown(
-        "<h1 style='text-align: center;'>Bounding Box Annotation Tool</h1>",
+        "<h3 style='text-align: center;'>Bounding Box Annotation Tool</h1>",
         unsafe_allow_html=True,
     )
+
+    progress_bar_with_text(
+        st.session_state.metrics_labelled_images, st.session_state.metrics_total_images
+    )
+
+    st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
 
     if st.session_state.image_index < len(st.session_state.remaining_images):
         current_image = st.session_state.remaining_images[st.session_state.image_index]
@@ -102,6 +112,7 @@ def main():
             write_label_to_sheet(st.session_state.output, new_labels)
             st.success("Annotations saved!")
             st.session_state.image_index += 1
+            st.session_state.metrics_labelled_images += 1
             st.rerun()
 
         if submitted_notsure:
@@ -109,6 +120,7 @@ def main():
             write_label_to_sheet(st.session_state.output, new_labels)
             st.success("Annotations saved!")
             st.session_state.image_index += 1
+            st.session_state.metrics_labelled_images += 1
             st.rerun()
 
     else:

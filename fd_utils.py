@@ -71,3 +71,41 @@ def get_bounding_boxes(img, img_path, face_app):
 
     vis_img = cv2.cvtColor(vis_img, cv2.COLOR_RGB2BGR)
     return vis_img, bbox_list
+
+
+def progress_bar_with_text(current, total):
+    percentage = int((current / total) * 100)
+    progress_text = f"{current}/{total}"
+
+    # HTML/CSS progress bar with centered text
+    st.markdown(
+        f"""
+        <div style="position: relative; height: 24px; background-color: #eee; border-radius: 8px;">
+            <div style="
+                width: {percentage}%;
+                background-color: #4CAF50;
+                height: 100%;
+                border-radius: 8px;
+                text-align: center;
+                color: white;
+                line-height: 24px;
+                font-weight: bold;
+            ">
+            </div>
+            <div style="
+                position: absolute;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                color: black;
+                font-weight: bold;
+            ">
+                {progress_text if percentage < 15 else ""}
+            </div>
+        </div>
+    """,
+        unsafe_allow_html=True,
+    )
