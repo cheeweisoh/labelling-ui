@@ -82,18 +82,21 @@ def progress_bar_with_text(current, total):
 
     st.markdown(
         f"""
-        <div style="position: relative; height: 24px; background-color: #eee; border-radius: 8px;">
+        <div style="position: relative; height: 24px; background-color: #eee; border-radius: 8px; overflow: hidden;">
             <div style="
                 width: {percentage}%;
                 background-color: #4CAF50;
                 height: 100%;
                 border-radius: 8px;
-                text-align: center;
+                display: flex;
+                justify-content: center;
+                align-items: center;
                 color: white;
-                line-height: 24px;
                 font-weight: bold;
             ">
+                {"&nbsp;" if percentage < 15 else progress_text}
             </div>
+            {f'''
             <div style="
                 position: absolute;
                 top: 0;
@@ -105,9 +108,10 @@ def progress_bar_with_text(current, total):
                 color: black;
                 font-weight: bold;
             ">
-                {progress_text if percentage < 15 else ""}
+                {progress_text}
             </div>
+            ''' if percentage < 15 else ''}
         </div>
-    """,
+        """,
         unsafe_allow_html=True,
     )

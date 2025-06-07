@@ -1,8 +1,8 @@
 import streamlit as st
 from google.oauth2 import service_account
-from googleapiclient.discovery import build
 import gspread
 from gdrive_utils import (
+    get_drive_service,
     find_folder_id,
     list_images_in_folder,
     get_image_from_drive,
@@ -11,7 +11,11 @@ from gdrive_utils import (
 from fd_utils import load_model, get_bounding_boxes, progress_bar_with_text
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from collections import OrderedDict
 import random
+import gc
+
+MAX_BBOX_CACHE_SIZE = 10
 
 
 def main():
@@ -24,7 +28,7 @@ def main():
     )
 
     if "remaining_images" not in st.session_state:
-        drive_service = build("drive", "v3", credentials=creds)
+        drive_service = get_drive_service(creds)
         sheet_client = gspread.authorize(creds)
 
         image_folder_id = find_folder_id(drive_service, "CS610_AML")
@@ -68,13 +72,16 @@ def main():
         )
 
         if "bbox_cache" not in st.session_state:
-            st.session_state.bbox_cache = {}
+            st.session_state.bbox_cache = OrderedDict()
 
         if current_image_name not in st.session_state.bbox_cache:
             vis_img, bbox_list = get_bounding_boxes(
                 image, current_image_name, st.session_state.face_app
             )
             st.session_state.bbox_cache[current_image_name] = (vis_img, bbox_list)
+
+            if len(st.session_state.bbox_cache) > MAX_BBOX_CACHE_SIZE:
+                st.session_state.bbox_cache.popitem(last=False)
         else:
             vis_img, bbox_list = st.session_state.bbox_cache[current_image_name]
 
@@ -113,6 +120,9 @@ def main():
             st.success("Annotations saved!")
             st.session_state.image_index += 1
             st.session_state.metrics_labelled_images += 1
+            del new_labels
+            del image
+            gc.collect()
             st.rerun()
 
         if submitted_notsure:
@@ -121,6 +131,9 @@ def main():
             st.success("Annotations saved!")
             st.session_state.image_index += 1
             st.session_state.metrics_labelled_images += 1
+            del new_labels
+            del image
+            gc.collect()
             st.rerun()
 
     else:

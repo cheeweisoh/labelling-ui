@@ -4,6 +4,7 @@ from PIL import Image
 import pillow_heif
 import numpy as np
 from googleapiclient.errors import HttpError
+from googleapiclient.discovery import build
 import time
 
 pillow_heif.register_heif_opener()
@@ -18,6 +19,12 @@ def test_connection(service):
     except Exception as e:
         st.error(f"Failed to connect to Google Drive:\n{e}")
         return False
+
+
+@st.cache_resource
+def get_drive_service(_creds):
+    drive_service = build("drive", "v3", credentials=_creds)
+    return drive_service
 
 
 def retry(request_fn, max_retries=10):
