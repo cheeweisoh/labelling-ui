@@ -2,12 +2,13 @@ import streamlit as st
 from google.oauth2 import service_account
 import gspread
 from gdrive_utils import (
-    get_drive_service,
+    # get_drive_service,
     find_folder_id,
     list_images_in_folder,
     get_image_from_drive,
     write_label_to_sheet,
 )
+from googleapiclient.discovery import build
 from fd_utils import load_model, get_bounding_boxes, progress_bar_with_text
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -28,7 +29,8 @@ def main():
     )
 
     if "remaining_images" not in st.session_state:
-        drive_service = get_drive_service(creds)
+        # drive_service = get_drive_service(creds)
+        drive_service = build("drive", "v3", credentials=creds)
         sheet_client = gspread.authorize(creds)
 
         image_folder_id = find_folder_id(drive_service, "CS610_AML")
