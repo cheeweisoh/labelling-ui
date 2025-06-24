@@ -1,3 +1,0 @@
-image1.jpg, 50, 30, 150, 120, yes
-image1.jpg, 160, 60, 250, 140, no
-image1.jpg, 394, 162, 736, 666, tony

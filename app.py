@@ -33,7 +33,7 @@ def main():
         drive_service = build("drive", "v3", credentials=creds)
         sheet_client = gspread.authorize(creds)
 
-        image_folder_id = find_folder_id(drive_service, "CS610_AML")
+        image_folder_id = find_folder_id(drive_service, "CS610_AML/Non-Sus")
         image_files = list_images_in_folder(drive_service, image_folder_id)
         print(f"Total images: {len(image_files)}")
 
