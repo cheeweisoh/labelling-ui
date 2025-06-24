@@ -65,7 +65,10 @@ def main():
     st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
 
     if st.session_state.image_index < len(st.session_state.remaining_images):
-        current_image = st.session_state.remaining_images[st.session_state.image_index]
+        # current_image = st.session_state.remaining_images[st.session_state.image_index]
+        for i in st.session_state.remaining_images:
+            if i["name"] == "image_455.jpg":
+                current_image = i
         current_image_id = current_image["id"]
         current_image_name = current_image["name"]
         image = get_image_from_drive(st.session_state.drive_service, current_image_id)
