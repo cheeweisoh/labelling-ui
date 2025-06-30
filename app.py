@@ -1,57 +1,24 @@
 import streamlit as st
-from google.oauth2 import service_account
-import gspread
-from gdrive_utils import (
-    # get_drive_service,
-    find_folder_id,
-    list_images_in_folder,
+import gc
+from collections import OrderedDict
+from zoneinfo import ZoneInfo
+from datetime import datetime
+
+from src.utils.google_drive import (
     get_image_from_drive,
     write_label_to_sheet,
 )
-from googleapiclient.discovery import build
-from fd_utils import load_model, get_bounding_boxes, progress_bar_with_text
-from datetime import datetime
-from zoneinfo import ZoneInfo
-from collections import OrderedDict
-import random
-import gc
+from src.utils.face_detection import (
+    get_bounding_boxes,
+    progress_bar_with_text,
+)
+from src.state import init_state
 
 MAX_BBOX_CACHE_SIZE = 10
 
 
 def main():
-    creds = service_account.Credentials.from_service_account_info(
-        st.secrets["labelling_ui_credentials"],
-        scopes=[
-            "https://www.googleapis.com/auth/drive",
-            "https://spreadsheets.google.com/feeds",
-        ],
-    )
-
-    if "remaining_images" not in st.session_state:
-        # drive_service = get_drive_service(creds)
-        drive_service = build("drive", "v3", credentials=creds)
-        sheet_client = gspread.authorize(creds)
-
-        image_folder_id = find_folder_id(drive_service, "CS610_AML/Non-Sus")
-        image_files = list_images_in_folder(drive_service, image_folder_id)
-        print(f"Total images: {len(image_files)}")
-
-        output = sheet_client.open_by_key(
-            st.secrets["output_sheet"]["output_sheet_id"]
-        ).sheet1
-        labelled_images = set([x[0] for x in output.get_all_values()[1:]])
-        remaining_images = [x for x in image_files if x["name"] not in labelled_images]
-        random.shuffle(remaining_images)
-
-        st.session_state.remaining_images = remaining_images
-        st.session_state.image_index = 0
-        st.session_state.drive_service = drive_service
-        st.session_state.face_app = load_model()
-        st.session_state.output = output
-
-        st.session_state.metrics_total_images = len(image_files)
-        st.session_state.metrics_labelled_images = len(labelled_images)
+    init_state(st)
 
     st.markdown(
         "<h3 style='text-align: center;'>Bounding Box Annotation Tool</h1>",
@@ -65,16 +32,10 @@ def main():
     st.markdown("<div style='height: 5px;'></div>", unsafe_allow_html=True)
 
     if st.session_state.image_index < len(st.session_state.remaining_images):
-        # current_image = st.session_state.remaining_images[st.session_state.image_index]
-        for i in st.session_state.remaining_images:
-            if i["name"] == "image_455.jpg":
-                current_image = i
+        current_image = st.session_state.remaining_images[st.session_state.image_index]
         current_image_id = current_image["id"]
         current_image_name = current_image["name"]
         image = get_image_from_drive(st.session_state.drive_service, current_image_id)
-        print(
-            f"using image {current_image_name} with id {st.session_state.image_index}"
-        )
 
         if "bbox_cache" not in st.session_state:
             st.session_state.bbox_cache = OrderedDict()
@@ -119,25 +80,14 @@ def main():
                 "I'm not sure", use_container_width=True
             )
 
-        if submitted_sure:
-            new_labels = [x + ["y"] for x in new_labels]
+        if submitted_sure or submitted_notsure:
+            flag = "y" if submitted_sure else "n"
+            new_labels = [x + [flag] for x in new_labels]
             write_label_to_sheet(st.session_state.output, new_labels)
             st.success("Annotations saved!")
             st.session_state.image_index += 1
             st.session_state.metrics_labelled_images += 1
-            del new_labels
-            del image
-            gc.collect()
-            st.rerun()
-
-        if submitted_notsure:
-            new_labels = [x + ["n"] for x in new_labels]
-            write_label_to_sheet(st.session_state.output, new_labels)
-            st.success("Annotations saved!")
-            st.session_state.image_index += 1
-            st.session_state.metrics_labelled_images += 1
-            del new_labels
-            del image
+            del new_labels, image
             gc.collect()
             st.rerun()
 
